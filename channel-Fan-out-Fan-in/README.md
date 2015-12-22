@@ -12,7 +12,7 @@
 
 - `gen()` generates a range of numbers
 - `square()` returns the square
-- `merge()` returns the square
+- `merge()` merges square functions
 
 
 - `X` closes channel
