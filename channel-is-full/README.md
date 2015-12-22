@@ -1,4 +1,4 @@
-## How to kwon if a channel if full
+## How to know if a channel if full
 
 - Using `select` statement
 
