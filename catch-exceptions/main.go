@@ -13,7 +13,7 @@ func catchException(exception chan<- interface{}) {
 		}
 	}(exception)
 	if rand.Int()%2 == 0 {
-		panic("Exception !!!!")
+		panic("throw")
 	}
 }
 
@@ -25,7 +25,7 @@ func main() {
 		catchException(exception)
 		select {
 		case err := <-exception:
-			fmt.Println("Exception catched ", catch, err)
+			fmt.Println("Exception caught", catch, err)
 			catch++
 		default:
 			fmt.Println(`No exception \o/`)
