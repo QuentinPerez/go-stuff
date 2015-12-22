@@ -12,8 +12,8 @@ import "testing"
 // coverage: 100.0% of statements
 // ok  	github.com/QuentinPerez/go-stuff/channel-with-goselect/goselect	7.655s
 
-func BenchmarkStart10000(b *testing.B) {
+func BenchmarkStart5000(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		Start(10000)
+		Start(5000)
 	}
 }
