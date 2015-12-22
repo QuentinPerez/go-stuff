@@ -1,5 +1,7 @@
 package main
 
+import "sync"
+
 //
 // go version go1.5.2 darwin/amd64
 // 4 cores
@@ -38,12 +40,16 @@ func event(id int, c chan<- goSelect) {
 func main() {
 	channels := make([]chan goSelect, nbOfSalves)
 	aggregate := make(chan goSelect)
+	// just for checking
+	wait := sync.WaitGroup{}
 
 	for i := range channels {
 		channels[i] = make(chan goSelect)
+		wait.Add(1)
 		go event(i, channels[i])
 	}
 	for _, ch := range channels {
+		wait.Add(1)
 		go func(agg chan<- goSelect, ch <-chan goSelect) {
 			for {
 				select {
@@ -52,6 +58,7 @@ func main() {
 						agg <- msg
 					} else {
 						agg <- goSelect{Data: shudown{}}
+						wait.Done()
 						return
 					}
 				}
@@ -63,10 +70,12 @@ func main() {
 		case msg := <-aggregate:
 			if _, ok := msg.Data.(shudown); ok {
 				// fmt.Printf("Done\n")
+				wait.Done()
 				nb--
 			} else {
 				// fmt.Printf("%v <- %v\n", msg.ID, msg.Data.(int))
 			}
 		}
 	}
+	wait.Wait()
 }
