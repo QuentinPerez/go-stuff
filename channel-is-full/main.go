@@ -8,14 +8,14 @@ func main() {
 
 	c <- true
 
-	// 1) using select method
+	// using select method
 	select {
 	case c <- false:
 	default:
 		fmt.Println("Channel is full")
 	}
 
-	// 2) check the length and the capacity
+	// check the length and the capacity
 	if len(c) == cap(c) {
 		fmt.Println("Channel is full")
 	}
