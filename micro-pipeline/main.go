@@ -3,7 +3,7 @@ package main
 func main() {
 	// 1) method
 	//
-	// ~3 950 000 msgs/s
+	// ~806 766 msgs/s
 	//
 	// rw := NewRW()
 	// input := rw.Input()
@@ -14,12 +14,13 @@ func main() {
 	// 	}
 	// }()
 	// for {
-	// 	input <- link
+	// 	d := <-link
+	// 	input <- d
 	// }
 
 	// 2) method  1 + buffer
 	//
-	// ~11 116 000 msgs/s
+	// ~2 737 661 msgs/s
 	//
 	// rw := NewRWBuffered()
 	// input := rw.Input()
@@ -30,7 +31,8 @@ func main() {
 	// 	}
 	// }()
 	// for {
-	// 	input <- link
+	// 	d := <-link
+	// 	input <- d
 	// }
 
 	// 3) method
@@ -45,7 +47,7 @@ func main() {
 
 	// 4) method 3 + buffer
 	//
-	// ~ 3 359 500 msgs/s
+	// ~ 3 402 570 msgs/s
 	//
 	rw := NewRWBuffered()
 	input := rw.Input()
