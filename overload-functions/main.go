@@ -25,8 +25,12 @@ func (c Child) Overload() {
 	fmt.Println("  ->", runtime.FuncForPC(pc).Name())
 }
 
-func (c Child) CallAOverload() {
+func (c Child) CallAOverloadUnsafe() {
 	(*Parent)(unsafe.Pointer(&c)).Overload()
+}
+
+func (c Child) CallAOverloadMember() {
+	c.Parent.Overload()
 }
 
 func main() {
@@ -40,5 +44,7 @@ func main() {
 	c.Overload()
 	fmt.Println()
 	fmt.Println("Call child.Parent.Overload()")
-	c.CallAOverload()
+	c.CallAOverloadMember()
+	fmt.Println("Call child.Parent.Overload() unsafe")
+	c.CallAOverloadUnsafe()
 }
