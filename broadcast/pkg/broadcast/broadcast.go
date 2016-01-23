@@ -1,8 +1,13 @@
 package broadcast
 
+import (
+	"sync"
+	"time"
+)
+
 const (
-	available   = iota
-	unavailable = iota
+	available = iota
+	used
 	toClose
 )
 
@@ -13,18 +18,21 @@ type channel struct {
 
 func NewChannel() *channel {
 	ret := &channel{
-		c:     make(chan interface{}, 1),
+		c:     make(chan interface{}),
 		state: available,
 	}
 	return ret
 }
 
 type broadcaster struct {
-	done               chan struct{}
-	newSubscribeInput  chan int
-	newSubscribeOutput chan int
-	inputs             []*channel
-	outputs            []*channel
+	done                     chan struct{}
+	newSubscribeInput        chan int
+	newSubscribeInputAnswer  chan int
+	newSubscribeOutput       chan int
+	newSubscribeOutputAnswer chan int
+	inputs                   []*channel
+	outputs                  []*channel
+	sync.Mutex
 }
 
 func (b *broadcaster) dispatch() {
@@ -38,31 +46,31 @@ func (b *broadcaster) dispatch() {
 			found := false
 			for i := range b.inputs {
 				if b.inputs[i].state == available {
-					b.inputs[i].state = unavailable
-					b.newSubscribeInput <- i
+					b.inputs[i].state = used
+					b.newSubscribeInputAnswer <- i
 					found = true
 					break
 				}
 			}
 			if !found {
 				b.inputs = append(b.inputs, NewChannel())
-				b.inputs[(len(b.inputs) - 1)].state = unavailable
-				b.newSubscribeInput <- (len(b.inputs) - 1)
+				b.inputs[(len(b.inputs) - 1)].state = used
+				b.newSubscribeInputAnswer <- (len(b.inputs) - 1)
 			}
 		case <-b.newSubscribeOutput:
 			found := false
 			for i := range b.outputs {
 				if b.outputs[i].state == available {
-					b.outputs[i].state = unavailable
-					b.newSubscribeOutput <- i
+					b.outputs[i].state = used
+					b.newSubscribeOutputAnswer <- i
 					found = true
 					break
 				}
 			}
 			if !found {
 				b.outputs = append(b.outputs, NewChannel())
-				b.outputs[(len(b.outputs) - 1)].state = unavailable
-				b.newSubscribeOutput <- (len(b.outputs) - 1)
+				b.outputs[(len(b.outputs) - 1)].state = used
+				b.newSubscribeOutputAnswer <- (len(b.outputs) - 1)
 			}
 		default:
 			for i := range b.inputs {
@@ -82,13 +90,13 @@ func (b *broadcaster) dispatch() {
 									b.outputs[o].state = toClose
 								}
 							default:
-								if b.outputs[o].state == unavailable {
+								if b.outputs[o].state == used {
 									b.outputs[o].c <- d
 								}
 							}
 						}
 					}
-				default:
+				case <-time.After(1 * time.Millisecond):
 					break
 				}
 			}
@@ -105,11 +113,13 @@ func (b *broadcaster) dispatch() {
 
 func New() *broadcaster {
 	ret := &broadcaster{
-		done:               make(chan struct{}),
-		newSubscribeInput:  make(chan int),
-		newSubscribeOutput: make(chan int),
-		inputs:             make([]*channel, 1),
-		outputs:            make([]*channel, 1),
+		done:                     make(chan struct{}),
+		newSubscribeInput:        make(chan int),
+		newSubscribeOutput:       make(chan int),
+		newSubscribeInputAnswer:  make(chan int),
+		newSubscribeOutputAnswer: make(chan int),
+		inputs:  make([]*channel, 1),
+		outputs: make([]*channel, 1),
 	}
 	for i := range ret.inputs {
 		ret.inputs[i] = NewChannel()
@@ -122,19 +132,41 @@ func New() *broadcaster {
 }
 
 func (b *broadcaster) SubscribeInput() chan<- interface{} {
+	b.Lock()
+	defer b.Unlock()
 	b.newSubscribeInput <- 0
-	id := <-b.newSubscribeInput
+	id := <-b.newSubscribeInputAnswer
 	return b.inputs[id].c
 }
 
-func (b *broadcaster) SubscribeOuput() <-chan interface{} {
+func (b *broadcaster) SubscribeOuput() (int, <-chan interface{}) {
+	b.Lock()
+	defer b.Unlock()
 	b.newSubscribeOutput <- 0
-	id := <-b.newSubscribeOutput
-	return b.outputs[id].c
+	id := <-b.newSubscribeOutputAnswer
+	return id, b.outputs[id].c
+}
+
+func (b *broadcaster) NbOutputChannel() (size int) {
+	b.Lock()
+	defer b.Unlock()
+	size = 0
+
+	for i := range b.outputs {
+		if b.outputs[i].state == used {
+			size++
+		}
+	}
+	return
 }
 
 func (b *broadcaster) Close() {
 	b.done <- struct{}{}
 	<-b.done
 	close(b.done)
+	for i := range b.outputs {
+		if b.outputs[i].state == used {
+			close(b.outputs[i].c)
+		}
+	}
 }
