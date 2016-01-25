@@ -95,4 +95,22 @@ func main() {
 	go printStr(ctx, wait, 10*time.Second)
 	wait.Wait()
 	cancel()
+
+	fmt.Println()
+	fmt.Println(">>>> Context.Background with 2 child")
+	fmt.Println()
+
+	ctx, cancel = context.WithCancel(context.Background()) // parent
+
+	_, cancel1 := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+	wait.Add(1)
+	go printStr(ctx, wait, 10*time.Second)
+	_, cancel2 := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	wait.Add(1)
+	go printStr(ctx, wait, 10*time.Second)
+	<-time.After(1 * time.Second)
+	cancel()
+	wait.Wait()
+	cancel1()
+	cancel2()
 }
